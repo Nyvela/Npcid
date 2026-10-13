@@ -17,6 +17,10 @@ typedef struct pci_device {
   uint8_t header_type;
 } pci_device_t;
 
+typedef struct ipc_device_query {
+  uint8_t base_class, sub_class, prog_if;
+} ipc_device_query_t;
+
 extern pci_device_t *devices;
 extern uint64_t devices_length;
 extern uint64_t devices_cap;

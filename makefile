@@ -32,7 +32,7 @@ $(ELF): $(SRC) linker.ld
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRC) -o $@
 
 $(BIN): $(ELF)
-	$(OBJCOPY) -O binary $< $@
+	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $< $@
 
 clean:
 	rm -rf $(BUILD)

@@ -1,7 +1,9 @@
 #include <nyvela/user/syslib.h>
 
 #include "../include/device.h"
+#include "../include/npcid/query.h"
 
+/*
 static uint64_t safe_uitoa(int64_t val, char *buf, uint64_t cap) {
   uint64_t converted_bytes = 0;
 
@@ -85,16 +87,41 @@ void print_device(pci_device_t dev) {
   sys_write(1, buf, converted_bytes);
   prints("\n\n");
 }
+*/
+
+void send_device(ipc_device_query_t dev, uint64_t sender) {
+  for (uint64_t i = 0; i < devices_length; i++) {
+    if (devices[i].base_class == dev.base_class && devices[i].sub_class == dev.sub_class && devices[i].prog_if == dev.prog_if) {
+      sys_ipc_send(sender, &devices[i], sizeof(pci_device_t));
+    }
+  }
+}
 
 void _start(void) {
   malloc_init();
   check_all_buses(); 
-  
+
+
+  /*
   char buf[] = "Press enter to continue...";
   char tmp = 0;
 
   for (uint64_t i = 0; i < devices_length; i++) {
     print_device(devices[i]);
+  }
+  */
+  
+  uint8_t msg[IPC_MAX_MSG];
+  uint64_t sender;
+
+  while (true) {
+    int64_t read = sys_ipc_poll(msg, sizeof(msg), &sender);
+
+    if (read < sizeof(ipc_device_query_t)) {
+      continue;
+    }
+
+    send_device(*(ipc_device_query_t*)msg, sender);
   }
 
   sys_exit(0);
