@@ -3,98 +3,21 @@
 #include "../include/device.h"
 #include "../include/npcid/query.h"
 
-/*
-static uint64_t safe_uitoa(int64_t val, char *buf, uint64_t cap) {
-  uint64_t converted_bytes = 0;
-
-  if (!(converted_bytes = uitoa(val, buf, cap))) {
-    char s[] = "Failed to convert integer to string. (safe_uitoa)";
-    sys_write(1, s, sizeof(s) - 1);
-  }
-
-  return converted_bytes;
-}
-
-void prints(char *s) {
-  uint64_t size = ustrlen(s);
-  sys_write(1, s, size);
-}
-
-void print_device(pci_device_t dev) {
-  char buf[24];
-  uint64_t converted_bytes = 0;
-
-  if (!(converted_bytes = safe_uitoa((int64_t)dev.bus, buf, sizeof(buf))))
-    return;
-  
-  prints("Bus: ");
-  sys_write(1, buf, converted_bytes);
-  prints("\n");
-
-  if (!(converted_bytes = safe_uitoa((int64_t)dev.device, buf, sizeof(buf))))
-    return;
-  
-  prints("Device: ");
-  sys_write(1, buf, converted_bytes);
-  prints("\n");
-
-  if (!(converted_bytes = safe_uitoa((int64_t)dev.function, buf, sizeof(buf))))
-    return;
-  
-  prints("Function: ");
-  sys_write(1, buf, converted_bytes);
-  prints("\n");
-
-  if (!(converted_bytes = safe_uitoa((int64_t)dev.vendor_id, buf, sizeof(buf))))
-    return;
-  
-  prints("Vendor ID: ");
-  sys_write(1, buf, converted_bytes);
-  prints("\n");
-
-  if (!(converted_bytes = safe_uitoa((int64_t)dev.device_id, buf, sizeof(buf))))
-    return;
-  
-  prints("Device ID: ");
-  sys_write(1, buf, converted_bytes);
-  prints("\n");
-
-  if (!(converted_bytes = safe_uitoa((int64_t)dev.base_class, buf, sizeof(buf))))
-    return;
-  
-  prints("Base Class: ");
-  sys_write(1, buf, converted_bytes);
-  prints("\n");
-
-  if (!(converted_bytes = safe_uitoa((int64_t)dev.sub_class, buf, sizeof(buf))))
-    return;
-  
-  prints("Sub Class: ");
-  sys_write(1, buf, converted_bytes);
-  prints("\n");
-
-  if (!(converted_bytes = safe_uitoa((int64_t)dev.prog_if, buf, sizeof(buf))))
-    return;
-  
-  prints("Prog IF: ");
-  sys_write(1, buf, converted_bytes);
-  prints("\n");
-
-  if (!(converted_bytes = safe_uitoa((int64_t)dev.header_type, buf, sizeof(buf))))
-    return;
-  
-  prints("Header Type: ");
-  sys_write(1, buf, converted_bytes);
-  prints("\n\n");
-}
-*/
-
-void send_device(ipc_device_query_t dev, uint64_t sender) {
+void send_device(npcid_dev_query_t dev_query, uint64_t sender) {
   for (uint64_t i = 0; i < devices_length; i++) {
-    if (devices[i].base_class == dev.base_class && devices[i].sub_class == dev.sub_class && devices[i].prog_if == dev.prog_if) {
+    if (devices[i].base_class == dev_query.base_class && devices[i].sub_class == dev_query.sub_class && devices[i].prog_if == dev_query.prog_if) {
       sys_ipc_send(sender, &devices[i], sizeof(pci_device_t));
     }
   }
+}
+
+void send_bar(npcid_bar_query_t bar_query, uint64_t sender) {
+  uint64_t addr = 0;
+  
+  if (bar_query.bar <= 5) 
+    addr = get_bar_addr(bar_query.bus, bar_query.dev, bar_query.func, 0x10 + bar_query.bar * 4);
+
+  sys_ipc_send(sender, &addr, sizeof(uint64_t)); 
 }
 
 void _start(void) {
@@ -117,11 +40,21 @@ void _start(void) {
   while (true) {
     int64_t read = sys_ipc_poll(msg, sizeof(msg), &sender);
 
-    if (read < sizeof(ipc_device_query_t)) {
+    if (read < sizeof(ipc_npcid_query_t)) {
       continue;
     }
 
-    send_device(*(ipc_device_query_t*)msg, sender);
+    ipc_npcid_query_t query = *(ipc_npcid_query_t*)msg;
+    
+    switch (query.func) {
+      case NPCID_GET_DEVICE:
+        send_device(query.args.dev_query, sender);
+        break;
+
+      case NPCID_GET_BAR:
+        send_bar(query.args.bar_query, sender);
+        break;
+    }
   }
 
   sys_exit(0);

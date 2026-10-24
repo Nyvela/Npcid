@@ -30,6 +30,8 @@ void check_function(uint8_t bus, uint8_t device, uint8_t func);
 void check_bus(uint8_t bus);
 void check_all_buses(void);
 
+uint64_t get_bar_addr(uint8_t bus, uint8_t dev, uint8_t func, uint8_t bar);
+
 bool append_device(pci_device_t dev);
 
 #endif // NPCIDEVICE_H

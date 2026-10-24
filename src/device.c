@@ -110,3 +110,15 @@ void check_all_buses(void) {
     }
   }
 }
+
+uint64_t get_bar_addr(uint8_t bus, uint8_t dev, uint8_t func, uint8_t bar) {
+  uint32_t lo = sys_pci_conf_read32(bus, dev, func, bar);
+
+  if (lo == 0xFFFFFFFF || (lo & 0x1)) return 0; // Absent or I/O BAR 
+  uint64_t addr = lo & ~0xFULL;
+
+  if ((lo & 0x6) == 0x4) // 64-bit memory BAR
+    addr |= (uint64_t)sys_pci_conf_read32(bus, dev, func, bar + 4) << 32;
+
+  return addr; // 0 = unassigned
+}
